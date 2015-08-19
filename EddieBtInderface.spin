@@ -1,8 +1,8 @@
-DAT programName         byte "BluetoothCommander", 0
+DAT programName         byte "EddieBtInderface", 0
 CON
 {{
   By Duane Degn
-  June 18, 2015
+  July 18, 2015
 
   
 }}
@@ -19,11 +19,11 @@ CON
   MILLISECOND = CLK_FREQ / 1_000
 
   '' I/O pins
-  'RX2     = 11                                             
-  'TX2     = 10
-  TX_TO_BT = 10 '17               
-  RX_FROM_BT = 11 '16             
-
+ 
+  TX_TO_BT = 15              
+  RX_FROM_BT = 16             
+  ENABLE = 14
+  
   '' The FONA should be powered from a single cell LiPo battery. The ground
   '' of the FONA should be connected to the ground of the Propeller.
   '' 3.3V should be connected to the FONA's Vio pin.

@@ -1,4 +1,4 @@
-DAT programName         byte "BluetoothCommander", 0
+DAT programName         byte "BluetoothBridge", 0
 CON
 {{
   By Duane Degn
@@ -21,15 +21,25 @@ CON
   '' I/O pins
   'RX2     = 11                                             
   'TX2     = 10
-  TX_TO_BT = 10 '17               
-  RX_FROM_BT = 11 '16             
+  'BLUETOOTH_KEY = 14
+  'BLUETOOTH_TX = 15
+  'BLUETOOTH_RX = 16
+  
+  I2C_CLOCK = 9
+  I2C_DATA = 10
+  BLUETOOTH_RX = I2C_CLOCK
+  BLUETOOTH_TX = I2C_DATA
 
+  TX_TO_BT = BLUETOOTH_TX '10 '17                ' connects with RX on FONA
+  RX_FROM_BT = BLUETOOTH_RX '11 '16              ' connects with TX on FONA
+
+  
   '' The FONA should be powered from a single cell LiPo battery. The ground
   '' of the FONA should be connected to the ground of the Propeller.
   '' 3.3V should be connected to the FONA's Vio pin.
 
   PST_BAUD = 115_200           
-  BT_BAUD = 9_600 ' 38_400 '
+  BT_BAUD = 115_200 '9_600 ' 38_400 '
 
   END_OF_SMS_CHARACTER = "~"    ' This should a character not used by the FONA in normal communication.
   CONTROL_Z = 26                
@@ -52,10 +62,11 @@ OBJ
 
   Pst : "Parallax Serial Terminal"
   Bt : "Parallax Serial Terminal"
-  'Format : "StrFmt"
+  Format : "StrFmt"
   
 PUB Start
 
+  'dira[BLUETOOTH_KEY] := 1
   dataPtr[0] := @data0
   dataPtr[1] := @data1
   dataPtr[2] := @data2
@@ -83,7 +94,17 @@ PUB BridgeBt | inputCharacter, numberOfCharactersInBuffer, btIndex
     if numberOfCharactersInBuffer
       repeat numberOfCharactersInBuffer
         inputCharacter := Pst.CharIn
-        if inputCharacter == "d" 
+        btBuffer[btIndex++] := inputCharacter
+        if inputCharacter == $0D ' Add a line feed character when a carriage return is received.
+          btBuffer[btIndex++] := $0A
+          btBuffer[btIndex] := 0
+          Bt.Str(@btBuffer)
+          Pst.Str(string(11, 13, "Sent following string to Bluetooth: "))
+          SafeStr(@btBuffer, btIndex)
+          btIndex := 0    
+        'Bt.Char(inputCharacter)
+        
+       { if inputCharacter == "d" 
           SendData
           quit
         elseif inputCharacter => "1" and inputCharacter =< "3"
@@ -109,7 +130,7 @@ PUB BridgeBt | inputCharacter, numberOfCharactersInBuffer, btIndex
           'Bt.Char($0A)         ' This step isn't really needed since the FONA will work fine
                                  ' with just a carriage return.
                                  
-          btIndex := 0                       
+          btIndex := 0   }                    
     '' This last section of the loop checks for input from the Bt.
     '' If input is received it is passed on to the terminal.
     '' Non-printable ASCII characters will be displayed as their
@@ -119,12 +140,13 @@ PUB BridgeBt | inputCharacter, numberOfCharactersInBuffer, btIndex
     if numberOfCharactersInBuffer
       repeat numberOfCharactersInBuffer
         inputCharacter := Bt.CharIn
-        if inputCharacter == 2
+        SafeTx(inputCharacter)
+        {if inputCharacter == 2
           ReceiveState
         else
-          SafeTx(inputCharacter)
+          SafeTx(inputCharacter)}
 
-PUB ReceiveState | inputCharacter
+{PUB ReceiveState | inputCharacter
 
 
   inputCharacter := Bt.CharIn
@@ -176,7 +198,7 @@ PUB ReceiveJoystick(inputCharacter)
     result += inputCharacter - "0"
 
   joyY := result - 200
-    
+ }   
 PRI ChangeBaud
 
   Bt.Stop
